@@ -6,7 +6,7 @@ from constants import *
 class Cell():
     font = ('Helvetica','30','bold')
 
-    def __init__(self, master, row, column):
+    def __init__(self, master, row, column, val=0):
         self.row = row
         self.column = column
         self.master = master
@@ -15,7 +15,7 @@ class Cell():
         self.x = column * (100 + 5) + 12
         self.y = row * (100 + 5) + 12
 
-        self.val = 0
+        self.val = val
 
         y, x = self.y, self.x
         self.master.create_rectangle(x, y, x + 100, y + 100)
@@ -53,7 +53,6 @@ class Board(tk.Canvas):
 
         self.set_binds()
 
-
     def init_cells(self):
         for y in range(self.width):
             for x in range(self.width):
@@ -71,47 +70,56 @@ class Board(tk.Canvas):
             y, x = spaces[i]
             self.cells[y][x].val = np.random.choice([2, 4], p = [0.9, 0.1])
             return True
-        else:
-            print('Game Over!')
-            return False
+        return False
 
     def set_binds(self):
-        self.bind_all('<KeyRelease>', lambda a: self.move(a.keysym))
+        self.bind_all('<KeyRelease>', lambda a: self.input(a.keysym))
 
     # fixing this function
-    def move(self, key):
+    def input(self, key):
         if key.lower() not in ['w', 'a', 's', 'd']:
             return False
 
-        # down = transpose + right + transpose
         # up = transpose  + left + transpose
+        # down = transpose + right + transpose
         if key in 'WwSs':
-            np.transpose(self.cells)
+            np.flipud(self.cells)
         if key in 'WwAa':
             np.fliplr(self.cells)
 
-        setOfAdded = set() # added numbers can't be added to anything else in the same movement
-        while True:
-            moved = False # check if board changed in this set of iterations, if not -> break loop
-            for y in range(self.width): 
-                for x in range(self.width - 1):
-                    if self.cells[y][x].val != 0:
-                        if self.cells[y][x].val == self.cells[y][x + 1].val and ((y, x) or (y, x + 1)) not in setOfAdded:
-                            self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x + 1].val*2, 0
-                            moved = True
-                            setOfAdded.update([(y, x), (y, x + 1)])
-                        elif self.cells[y][x + 1].val == 0:
-                            self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x].val, 0
-                            moved = True
-                            if (y, x) in setOfAdded:
-                                setOfAdded.add((y, x + 1))
-            if not moved:
-                break   
-
+        setOfAdded = set() # added numbers can't be added to anything in the same movement
+        while self.move_right(setOfAdded):
+            pass
+            
+        if key in 'WwSs':
+            np.flipud(self.cells)
         if key in 'WwAa':
             np.fliplr(self.cells)
-        if key in 'WwSs':
-            np.transpose(self.cells)
+
+    def refresh_cells(self):
+        for row in self.cells:
+            for cell in row:
+                row, column = cell.row, cell.column
+                val = cell.val
+                self.delete(cell)
+                cell = Cell(self, row, column, val)
+
+    def move_right(self, added_previously):
+        moved = False # check if board changed in this set of iterations, if not -> break loop
+        for y in range(self.width): 
+            for x in range(self.width - 1):
+                if self.cells[y][x].val == 0:
+                    pass
+                if self.cells[y][x].val == self.cells[y][x + 1].val and (y, x) not in added_previously:
+                    self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x + 1].val*2, 0
+                    moved = True
+                    added_previously.update([(y, x), (y, x + 1)])
+                elif self.cells[y][x + 1].val == 0:
+                    self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x].val, 0
+                    moved = True
+        self.refresh_cells()
+        return moved
+
 
 class Game(tk.Tk):
     def __init__(self):
