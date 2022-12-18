@@ -2,6 +2,7 @@ import numpy as np
 import tkinter as tk
 from itertools import product
 from constants import *
+from pprint import pprint
 
 class Cell():
     font = ('Helvetica','30','bold')
@@ -15,10 +16,12 @@ class Cell():
         self.x = column * (100 + 5) + 12
         self.y = row * (100 + 5) + 12
 
+        y, x = self.y, self.x
+        self.id = self.master.create_rectangle(x, y, x + 100, y + 100)
+
         self.val = val
 
-        y, x = self.y, self.x
-        self.master.create_rectangle(x, y, x + 100, y + 100)
+
         self.update_color()
 
     @property
@@ -38,7 +41,7 @@ class Cell():
         self.text = self.master.create_text(x, y, text=self.val, font=Cell.font)
 
     def update_color(self):
-        self.master.itemconfig(self, fill=BACKGROUNDS[self.val])
+        self.master.itemconfig(self.id, fill=BACKGROUNDS[self.val])
 
 
 class Board(tk.Canvas):
@@ -48,7 +51,9 @@ class Board(tk.Canvas):
         self.width= width
 
         self.cells = np.full((width, width), Cell)
+        self.board = np.zeros((width, width), int)
         self.init_cells()
+
         self.randomly_add_2or4()
 
         self.set_binds()
@@ -60,7 +65,7 @@ class Board(tk.Canvas):
 
     def get_empty(self) -> list:
         cords = product(range(self.width), repeat=2)
-        spaces = [(y, x) for y, x in cords if self.cells[y][x].val == 0]
+        spaces = [(y, x) for y, x in cords if self.board[y][x] == 0]
         return spaces
 
     def randomly_add_2or4(self):
@@ -68,7 +73,8 @@ class Board(tk.Canvas):
         if spaces:
             i = int(np.random.choice(a = len(spaces)))
             y, x = spaces[i]
-            self.cells[y][x].val = np.random.choice([2, 4], p = [0.9, 0.1])
+            self.board[y][x] = np.random.choice([2, 4], p = [0.9, 0.1])
+            self.cells[y][x].val = self.board[y][x]
             return True
         return False
 
@@ -80,46 +86,52 @@ class Board(tk.Canvas):
         if key.lower() not in ['w', 'a', 's', 'd']:
             return False
 
-        # up = transpose  + left + transpose
+        # up = transpose  + flip columns + left + transpose
         # down = transpose + right + transpose
         if key in 'WwSs':
-            np.flipud(self.cells)
+            self.board = np.transpose(self.board)
         if key in 'WwAa':
-            np.fliplr(self.cells)
+            self.board = np.fliplr(self.board)
 
         setOfAdded = set() # added numbers can't be added to anything in the same movement
         while self.move_right(setOfAdded):
             pass
-            
-        if key in 'WwSs':
-            np.flipud(self.cells)
+
         if key in 'WwAa':
-            np.fliplr(self.cells)
+            self.board = np.fliplr(self.board)
+        if key in 'WwSs':
+            self.board = np.transpose(self.board)
+
+        self.randomly_add_2or4()
+        self.refresh_cells()
 
     def refresh_cells(self):
-        for row in self.cells:
-            for cell in row:
-                row, column = cell.row, cell.column
-                val = cell.val
-                self.delete(cell)
-                cell = Cell(self, row, column, val)
+        for y in range(self.width): 
+            for x in range(self.width):
+                self.cells[y][x].val = self.board[y][x]
 
     def move_right(self, added_previously):
-        moved = False # check if board changed in this set of iterations, if not -> break loop
+        moved = False 
+
         for y in range(self.width): 
             for x in range(self.width - 1):
-                if self.cells[y][x].val == 0:
-                    pass
-                if self.cells[y][x].val == self.cells[y][x + 1].val and (y, x) not in added_previously:
-                    self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x + 1].val*2, 0
+                if self.board[y][x] == 0:
+                    continue
+                if self.board[y][x] == self.board[y][x + 1] and (y, x) not in added_previously:
+                    self.board[y][x + 1], self.board[y][x] = self.board[y][x + 1]*2, 0
                     moved = True
                     added_previously.update([(y, x), (y, x + 1)])
-                elif self.cells[y][x + 1].val == 0:
-                    self.cells[y][x + 1].val, self.cells[y][x].val = self.cells[y][x].val, 0
+                elif self.board[y][x + 1] == 0:
+                    self.board[y][x + 1], self.board[y][x] = self.board[y][x], 0
                     moved = True
-        self.refresh_cells()
+
         return moved
 
+    def _print_cells(self):
+        for row in self.cells:
+            for cell in row:
+                print(cell.val, end=' ')
+            print()
 
 class Game(tk.Tk):
     def __init__(self):
