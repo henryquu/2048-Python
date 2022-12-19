@@ -1,12 +1,10 @@
 import numpy as np
 import tkinter as tk
+from tkinter.messagebox import showinfo
 from itertools import product
 from constants import *
-from pprint import pprint
 
 class Cell():
-    font = ('Helvetica','30','bold')
-
     def __init__(self, master, row, column, val=0):
         self.row = row
         self.column = column
@@ -38,18 +36,17 @@ class Cell():
         if self.text:
             self.master.delete(self.text)
         y, x = self.y + 50, self.x + 50
-        self.text = self.master.create_text(x, y, text=self.val, font=Cell.font)
+        self.text = self.master.create_text(x, y, text=self.val, font=FONT)
 
     def update_color(self):
         self.master.itemconfig(self.id, fill=BACKGROUNDS[self.val])
+        self.master.itemconfig(self.text, fill=FILL[self.val])
 
-
-class Board(tk.Canvas):
+class Game(tk.Canvas):
     def __init__(self, root, width=4):
         tk.Canvas.__init__(self, root, bg=BG_COLOR)
 
         self.width= width
-
         self.cells = np.full((width, width), Cell)
         self.board = np.zeros((width, width), int)
         self.init_cells()
@@ -70,13 +67,13 @@ class Board(tk.Canvas):
 
     def randomly_add_2or4(self):
         spaces = self.get_empty()
-        if spaces:
-            i = int(np.random.choice(a = len(spaces)))
-            y, x = spaces[i]
-            self.board[y][x] = np.random.choice([2, 4], p = [0.9, 0.1])
-            self.cells[y][x].val = self.board[y][x]
-            return True
-        return False
+        if not spaces:
+            return
+
+        i = int(np.random.choice(a = len(spaces)))
+        y, x = spaces[i]
+        self.board[y][x] = np.random.choice([2, 4], p = [0.9, 0.1])
+        self.cells[y][x].val = self.board[y][x]
 
     def set_binds(self):
         self.bind_all('<KeyRelease>', lambda a: self.input(a.keysym))
@@ -94,16 +91,21 @@ class Board(tk.Canvas):
             self.board = np.fliplr(self.board)
 
         setOfAdded = set() # added numbers can't be added to anything in the same movement
+        iter_count = 0
         while self.move_right(setOfAdded):
-            pass
-
+            iter_count += 1
+        
         if key in 'WwAa':
             self.board = np.fliplr(self.board)
         if key in 'WwSs':
             self.board = np.transpose(self.board)
 
-        self.randomly_add_2or4()
-        self.refresh_cells()
+        if not self.get_empty():
+            self.result()
+    
+        if iter_count > 0:
+            self.randomly_add_2or4()
+            self.refresh_cells()
 
     def refresh_cells(self):
         for y in range(self.width): 
@@ -123,6 +125,9 @@ class Board(tk.Canvas):
                     added_previously.update([(y, x), (y, x + 1)])
                 elif self.board[y][x + 1] == 0:
                     self.board[y][x + 1], self.board[y][x] = self.board[y][x], 0
+                    if (y, x) in added_previously:
+                        added_previously.update((y, x + 1))
+                        added_previously.remove((y, x))
                     moved = True
 
         return moved
@@ -132,8 +137,12 @@ class Board(tk.Canvas):
             for cell in row:
                 print(cell.val, end=' ')
             print()
+    
+    def result(self):
+        max = np.amax(self.board)
+        showinfo("Congratulations!", "Your score is " + str(max))
 
-class Game(tk.Tk):
+class Window(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.title("2048")
@@ -141,10 +150,11 @@ class Game(tk.Tk):
         self.geometry("440x440+500+100")
         self.resizable('no', 'no')
 
-        board = Board(self)
+        board = Game(self)
         board.pack(fill="both", expand=True)
 
         self.mainloop()
 
+
 if __name__ == "__main__":
-    Game()
+    Window()

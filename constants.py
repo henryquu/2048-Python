@@ -20,7 +20,8 @@ BACKGROUNDS = {
     65536:  "#f67c5f"
 }
 
-CELL_COLORS = {
+FILL = {
+    0:      "#9e948a",
     2:      "#776e65",
     4:      "#776e65",
     8:      "#f9f6f2",
