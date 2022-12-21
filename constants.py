@@ -40,4 +40,5 @@ FILL = {
     65536:  "#f9f6f2"
 }
 
-FONT = ("Verdana", 40, "bold")
+BIG_FONT = ("Verdana", 38, "bold")
+SMALL_FONT = ("Verdana", 25, "bold")

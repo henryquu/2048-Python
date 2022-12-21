@@ -19,7 +19,6 @@ class Cell():
 
         self.val = val
 
-
         self.update_color()
 
     @property
@@ -36,11 +35,21 @@ class Cell():
         if self.text:
             self.master.delete(self.text)
         y, x = self.y + 50, self.x + 50
-        self.text = self.master.create_text(x, y, text=self.val, font=FONT)
+    
+        if self.val < 100:
+            self.text = self.master.create_text(x, y, text=self.val, font=BIG_FONT)
+        elif self.val < 1000:
+            self.text = self.master.create_text(x, y, text=self.val, font=SMALL_FONT)
+        else:
+            val = len(bin(self.val)) - len(bin(self.val).rstrip('0'))
+            self.text = self.master.create_text(x, y, text=f"2^{val}", font=SMALL_FONT)
 
     def update_color(self):
-        self.master.itemconfig(self.id, fill=BACKGROUNDS[self.val])
-        self.master.itemconfig(self.text, fill=FILL[self.val])
+        bg = BACKGROUNDS.get(self.val, "#f67c5f")
+        fg = FILL.get(self.val, "#f9f6f2")
+        self.master.itemconfig(self.id, fill=bg)
+        self.master.itemconfig(self.text, fill=fg)
+
 
 class Game(tk.Canvas):
     def __init__(self, root, width=4):
