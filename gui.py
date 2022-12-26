@@ -5,7 +5,7 @@ from itertools import product
 from constants import *
 
 class Cell():
-    def __init__(self, master, row, column, val=0):
+    def __init__(self, master: tk.Frame, row: int, column: int, val: int=0):
         self.row = row
         self.column = column
         self.master = master
@@ -22,11 +22,11 @@ class Cell():
         self.update_color()
 
     @property
-    def val(self):
+    def val(self) -> int:
         return self._val
 
     @val.setter
-    def val(self, new_val):
+    def val(self, new_val: int):
         self._val = new_val
         self.update_text()
         self.update_color()
@@ -52,7 +52,7 @@ class Cell():
 
 
 class Game(tk.Canvas):
-    def __init__(self, root, width=4):
+    def __init__(self, root: tk.Tk, width: int=4):
         tk.Canvas.__init__(self, root, bg=BG_COLOR)
 
         self.width= width
@@ -88,11 +88,12 @@ class Game(tk.Canvas):
         self.bind_all('<KeyRelease>', lambda a: self.input(a.keysym))
 
     # fixing this function
-    def input(self, key):
+    def input(self, key: str):
         if key.lower() not in ['w', 'a', 's', 'd']:
-            return False
+            return
 
-        # up = transpose  + flip columns + left + transpose
+        # left = flip columns + right + flip columns
+        # up = transpose + left + transpose
         # down = transpose + right + transpose
         if key in 'WwSs':
             self.board = np.transpose(self.board)
@@ -100,10 +101,10 @@ class Game(tk.Canvas):
             self.board = np.fliplr(self.board)
 
         setOfAdded = set() # added numbers can't be added to anything in the same movement
-        iter_count = 0
+        iter_count = False # for checking if any movement was created
         while self.move_right(setOfAdded):
-            iter_count += 1
-        
+            iter_count = True
+
         if key in 'WwAa':
             self.board = np.fliplr(self.board)
         if key in 'WwSs':
@@ -112,7 +113,7 @@ class Game(tk.Canvas):
         if not self.get_empty():
             self.result()
     
-        if iter_count > 0:
+        if iter_count:
             self.randomly_add_2or4()
             self.refresh_cells()
 
@@ -121,11 +122,14 @@ class Game(tk.Canvas):
             for x in range(self.width):
                 self.cells[y][x].val = self.board[y][x]
 
-    def move_right(self, added_previously):
+    # iterates from right to left 
+    # adds adjacent cells of the same value that weren't made in the same move
+    # moves digit if there is empty space - 0, remembering if it's just made
+    def move_right(self, added_previously: set) -> bool:
         moved = False 
 
         for y in range(self.width): 
-            for x in range(self.width - 1):
+            for x in range(self.width - 2, -1, -1):
                 if self.board[y][x] == 0:
                     continue
                 if self.board[y][x] == self.board[y][x + 1] and (y, x) not in added_previously:
@@ -135,7 +139,7 @@ class Game(tk.Canvas):
                 elif self.board[y][x + 1] == 0:
                     self.board[y][x + 1], self.board[y][x] = self.board[y][x], 0
                     if (y, x) in added_previously:
-                        added_previously.update((y, x + 1))
+                        added_previously.add((y, x + 1))
                         added_previously.remove((y, x))
                     moved = True
 
@@ -151,7 +155,7 @@ class Game(tk.Canvas):
         max = np.amax(self.board)
         showinfo("Congratulations!", "Your score is " + str(max))
 
-class Window(tk.Tk):
+class Root(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self.title("2048")
@@ -166,4 +170,4 @@ class Window(tk.Tk):
 
 
 if __name__ == "__main__":
-    Window()
+    Root()
